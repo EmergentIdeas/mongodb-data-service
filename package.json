@@ -1,0 +1,31 @@
+{
+  "name": "@dankolz/mongodb-data-service",
+  "version": "1.0.0",
+  "private": false,
+  "description": "",
+  "main": "mongodb-data-service.js",
+  "scripts": {
+    "test": "node node_modules/mocha/bin/mocha.js",
+    "testdebug": "node --inspect-brk node_modules/mocha/bin/mocha.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EmergentIdeas/mongodb-data-service.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/EmergentIdeas/mongodb-data-service/issues"
+  },
+  "homepage": "https://github.com/EmergentIdeas/mongodb-data-service#readme",
+  "dependencies": {
+    "add-callback-to-promise": "^1.0.2",
+    "filter-log": "0.0.5"
+  },
+  "devDependencies": {
+    "chai": "^4.3.7",
+    "mocha": "^10.2.0",
+    "mongodb": "^3.7.3"
+  }
+}
