@@ -1,5 +1,6 @@
 const filog = require('filter-log')
 const addCallbackToPromise = require('add-callback-to-promise')
+const crypto = require("crypto");
 
 
 class DataService {
@@ -7,19 +8,31 @@ class DataService {
 	/**
 	 * 
 	 * @param {object} options
- 	 * @param {string} options.serviceName [o] Sets the name of this service for logging, and possibly other purposes
+ 	 * @param {string} [options.serviceName] Sets the name of this service for logging, and possibly other purposes
+ 	 * @param {boolean} [options.useIndependentIds] If true, records will get unique ID strings which are not tied to the underylying datastore
  	 * @param {object} options.collections an object holding the MongoDB collections this service will use, keyed by collection name
- 	 * @param {object} options.collections.default [o] the default collection. Technically optional, but the basic functions which
+ 	 * @param {object} [options.collections.default] the default collection. Technically optional, but the basic functions which
 	 * don't require the caller to specify the collection won't work if not set.
-	 * @param {EventEmitter} options.notification [o] An EventEmitter that will be notified on create, update, and delete. The notification is:
+	 * @param {EventEmitter} [options.notification] An EventEmitter that will be notified on create, update, and delete. The notification is:
 	 * emit('object-change', { the object }, changeType: create, update, delete)
+	 * @param {string} [options.eventName] The event name which will be used for the emitter. By default this is 'object-change'.
 	 * 
 	 */
-	constructor({serviceName = 'dataService'}) {
+	constructor({serviceName = 'dataService', useIndependentIds = true, eventName = 'object-change'} = {}) {
 		Object.assign(this, {
 			log: filog(serviceName + ':')
 			, collections: []
+			, useIndependentIds: useIndependentIds
+			, eventName: eventName
 		}, arguments[0])
+	}
+	
+	/**
+	 * Generates storage system independent random ids
+	 * @returns a base64 string, 256 bits of randomness
+	 */
+	generateId() {
+		return crypto.randomBytes(32).toString("base64");
 	}
 	
 	/**
@@ -46,7 +59,8 @@ class DataService {
 	/**
 	 * Store a document. It will replace or insert if there's no _id member
 	 * @param {*} focus 
-	 * @returns A promise that resolves to the saved object
+	 * @returns A promise that resolves to the saved object and the native mongo result
+	 * in an result object [obj, native]
 	 */
 	async save(focus) {
 		return this._save(this.collections.default, focus) 
@@ -56,7 +70,7 @@ class DataService {
 	 * @param {array} foci 
 	 * @returns 
 	 */
-	async saveMany(foci) {
+	saveMany(foci) {
 		return this._saveMany(this.collections.default, foci) 
 	}
 	/**
@@ -76,14 +90,11 @@ class DataService {
 	 */
 	createIdQuery(id) {
 		if (Array.isArray(id)) {
-			let ids = id.map(item => {
-				let val = this.createIdQuery(item)
-				if(val._id) {
-					return val._id
-				}
-				return val
-			})
-			return { _id: { $in: ids } }
+			let subqueries = id.map(singleId => this.createIdQuery(singleId))
+			let query = {
+				$or: subqueries
+			}
+			return query
 		}
 		else {
 			if(typeof id == 'object') {
@@ -104,6 +115,16 @@ class DataService {
 					_id: id
 				}
 
+			}
+			if(this.useIndependentIds && typeof id == 'string') {
+				query = {
+					$or: [
+						query,
+						{
+							id: id
+						}
+					]
+				}
 			}
 			
 			return query
@@ -183,6 +204,9 @@ class DataService {
 	 */
 	async _save(collection, focus, callback) {
 		let p = new Promise((resolve, reject) => {
+			if(this.useIndependentIds && !focus.id) {
+				focus.id = this.generateId()
+			}
 			if (focus._id) {
 				let options = {
 					upsert: true,
@@ -190,7 +214,7 @@ class DataService {
 				let id = focus._id
 				collection.replaceOne({_id: id}, focus, options).then(result => {
 					this._notify(focus, 'update')
-					return resolve(result)
+					return resolve([result.ops[0], result])
 				}).catch(err => {
 					this.log.error({
 						error: err
@@ -201,7 +225,7 @@ class DataService {
 			else {
 				collection.insertOne(focus).then(result => {
 					this._notify(focus, 'create')
-					return resolve(result)
+					return resolve([result.ops[0], result])
 				}).catch(err => {
 					this.log.error({
 						error: err
@@ -225,7 +249,7 @@ class DataService {
 	 * 	or
 	 * 		await Promise.all(service._saveMany(col, items))
 	 */
-	async _saveMany(collection, foci, callback) {
+	_saveMany(collection, foci, callback) {
 		let promises = []
 		for(let focus of foci) {
 			promises.push(this._save(collection, focus))
@@ -238,7 +262,7 @@ class DataService {
 	
 	_notify(obj, type) {
 		if(this.notification) {
-			this.notification.emit('object-change', obj, type)
+			this.notification.emit(this.eventName, obj, type)
 		}
 	}
 }

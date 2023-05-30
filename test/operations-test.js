@@ -8,6 +8,10 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb")
 const DataService = require('../mongodb-data-service')
 
 let collectionName = 'col' + (new Date()).getTime()
+function show(dat) {
+	console.log(JSON.stringify(dat, null, '\t'))
+
+}
 
 describe("basic data operations", async function () {
 	let uri = "mongodb://localhost:27017"
@@ -30,6 +34,27 @@ describe("basic data operations", async function () {
 		})
 		return p
 	})
+	it("independent ids", function () {
+		serv = new DataService({
+			collections: {
+				default: col
+			}
+		})
+		assert.equal(serv.useIndependentIds, true)
+		
+		let id = serv.generateId()
+		assert.isNotNull(id)
+
+		serv = new DataService({
+			collections: {
+				default: col
+			}
+			, useIndependentIds: false
+		})
+		assert.equal(serv.useIndependentIds, false)
+
+	})
+
 	it("ops", async function () {
 		let p = new Promise(async (resolve, reject) => {
 			try {
@@ -48,22 +73,20 @@ describe("basic data operations", async function () {
 				let dat = {
 					msg: 'hello'
 				}
-				let r = await serv.save(dat)
-				let id = r.insertedId
-				// console.log(id)
-				assert.isNotNull(id)
-				// console.log(dat)
+				let [r] = await serv.save(Object.assign({}, dat))
+				assert.isNotNull(r._id)
+				// Make sure we have an independent id
+				assert.isNotNull(r.id)
+				let id = r._id
+				let id2 = r.id
 
 				let result = await serv.fetch()
 				assert.equal(result.length, 1)
-				// console.log(result)
 
 				result = await serv.fetchOne(id)
-				// console.log(result)
 				assert.equal(result.msg, 'hello')
 
 				result = await serv.fetchOne(id.toString())
-				// console.log(result)
 				assert.equal(result.msg, 'hello')
 				
 				result.msg = 'hi'
@@ -72,12 +95,56 @@ describe("basic data operations", async function () {
 				result = await serv.fetchOne(id.toString())
 				assert.equal(result.msg, 'hi')
 
+				result = await serv.fetchOne({id: id2})
+				assert.equal(result.msg, 'hi')
+
+				result = await serv.fetchOne(id2)
+				assert.equal(result.msg, 'hi')
+
 				result = await serv.remove(id.toString())
-				// console.log(result)
 
 				result = await serv.fetchOne(id.toString())
 				assert.isNull(result)
 				
+				
+				let promises = serv.saveMany([
+					{msg: 'hello'}
+					, {msg: 'world'}
+				])
+				await Promise.all(promises)
+
+				result = await serv.fetch()
+				assert.equal(result.length, 2)
+				
+				let ids = result.map(item => item.id)
+				let ids2 = result.map(item => item._id.toString())
+				
+				result = await serv.fetch({id: {$in: ids}})
+				assert.equal(result.length, 2)
+				
+				result = await serv.fetchOne(ids)
+				assert.isNotNull(result)
+
+				result = await serv.fetchOne(ids2)
+				assert.isNotNull(result)
+				
+				result = await serv.fetch(serv.createIdQuery(ids))
+				assert.equal(result.length, 2)
+
+				result = await serv.fetch(serv.createIdQuery(ids2))
+				assert.equal(result.length, 2)
+				
+				result = await serv.fetch({name: 'Kolz'})
+				assert.equal(result.length, 0)
+
+
+				// with independent ids turned off
+				serv.useIndependentIds = false
+				let native
+				[r, native] = await serv.save({msg: 'world'})
+				assert.isNotNull(r._id)
+				// Make sure we don't have an independent id
+				assert.isUndefined(r.id)
 				
 
 			}
