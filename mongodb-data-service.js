@@ -148,6 +148,10 @@ class DataService {
 	}
 
 	
+	async _doInternalFetch(collection, query) {
+		return collection.find(query).toArray()
+	}
+
 	/**
 	 * Fetches a list of documents from the collection.
 	 * @param {Collection} collection A MongoDB Collection
@@ -157,7 +161,7 @@ class DataService {
 	 */
 	_fetchByQuery(collection, query = {}, callback) {
 		let p = new Promise((resolve, reject) => {
-			collection.find(query).toArray().then(result => {
+			this._doInternalFetch(collection, query).then(result => {
 				this.postFetchesProcessor(result, collection.collectionName).then((processed) => {
 					resolve(processed)
 				})
@@ -169,9 +173,13 @@ class DataService {
 		return addCallbackToPromise(p, callback)
 	}
 	
+	async _doInternalRemove(collection, query) {
+		return collection.deleteMany(query)
+	}
+	
 	_removeByQuery(collection, query = {}, callback) {
 		let p = new Promise((resolve, reject) => {
-			collection.deleteMany(query).then(result => {
+			this._doInternalRemove(collection, query).then(result => {
 				this._notify(query, 'delete')
 				resolve(result)
 			}).catch(err => {
@@ -194,6 +202,36 @@ class DataService {
 	_fetchById(collection, id, callback) {
 		return this._fetchByQuery(collection, this.createIdQuery(id), callback)
 	}
+	
+	async _doInternalSave(collection, focus) {
+		let p = new Promise((resolve, reject) => {
+			if (focus._id) {
+				let options = {
+					upsert: true,
+				}
+				let id = focus._id
+				collection.replaceOne({_id: id}, focus, options).then(result => {
+					return resolve([result.ops[0], 'update', result])
+				}).catch(err => {
+					this.log.error({
+						error: err
+					})
+					return reject(err)
+				})
+			}
+			else {
+				collection.insertOne(focus).then(result => {
+					return resolve([result.ops[0], 'create', result])
+				}).catch(err => {
+					this.log.error({
+						error: err
+					})
+					return reject(err)
+				})
+			}
+		})
+		return p
+	}
 
 	/**
 	 * Saves an object. If it already has an _id attribute, it replaces the existing document, otherwise inserts it.
@@ -207,32 +245,13 @@ class DataService {
 			if(this.useIndependentIds && !focus.id) {
 				focus.id = this.generateId()
 			}
-			if (focus._id) {
-				let options = {
-					upsert: true,
-				}
-				let id = focus._id
-				collection.replaceOne({_id: id}, focus, options).then(result => {
-					this._notify(focus, 'update')
-					return resolve([result.ops[0], result])
-				}).catch(err => {
-					this.log.error({
-						error: err
-					})
-					return reject(err)
-				})
-			}
-			else {
-				collection.insertOne(focus).then(result => {
-					this._notify(focus, 'create')
-					return resolve([result.ops[0], result])
-				}).catch(err => {
-					this.log.error({
-						error: err
-					})
-					return reject(err)
-				})
-			}
+			this._doInternalSave(collection, focus).then(([saved, saveType, nativeResult]) => {
+				this._notify(saved, saveType)
+				return resolve([saved, nativeResult])
+			})
+			.catch(err => {
+				reject(err)
+			})
 		})
 		return addCallbackToPromise(p, callback)
 	}
