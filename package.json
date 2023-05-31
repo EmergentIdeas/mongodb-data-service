@@ -1,6 +1,6 @@
 {
   "name": "@dankolz/mongodb-data-service",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": false,
   "description": "",
   "main": "mongodb-data-service.js",
@@ -20,12 +20,17 @@
   },
   "homepage": "https://github.com/EmergentIdeas/mongodb-data-service#readme",
   "dependencies": {
+    "@dankolz/abstract-data-service": "^1.0.0",
     "add-callback-to-promise": "^1.0.2",
-    "filter-log": "0.0.5"
+    "filter-log": "^1.0.0"
   },
   "devDependencies": {
     "chai": "^4.3.7",
     "mocha": "^10.2.0",
     "mongodb": "^3.7.3"
   }
+  , "files": [
+	"/mongodb-data-service.js",
+	"/README.md"
+  ]
 }
