@@ -88,7 +88,7 @@ class MongoDataService extends AbstractDataService {
 						return resolve([result.ops[0], 'update', result])
 					}
 					else {
-						return resolve([result, 'update', result])
+						return resolve([focus, 'update', result])
 					}
 				}).catch(err => {
 					this.log.error({
@@ -103,7 +103,7 @@ class MongoDataService extends AbstractDataService {
 						return resolve([result.ops[0], 'create', result])
 					}
 					else {
-						return resolve([result, 'create', result])
+						return resolve([focus, 'create', result])
 					}
 				}).catch(err => {
 					this.log.error({
