@@ -1,5 +1,30 @@
 const AbstractDataService = require('@dankolz/abstract-data-service')
 
+let genBsonId
+
+try {
+	const {ObjectId} = require('bson')
+	genBsonId = (val) => {
+		let id = new ObjectId(val)
+		return {
+			_id: id
+		}
+	}
+
+}
+catch(e) {
+	genBsonId = (val) => {
+		return {
+			_id: {
+				id: Buffer.from(val, "hex"),
+				_bsontype: "ObjectID",
+			}
+		}
+
+	}
+
+}
+
 class MongoDataService extends AbstractDataService {
 
 	/**
@@ -39,12 +64,7 @@ class MongoDataService extends AbstractDataService {
 			}
 			let query;
 			if(typeof id == 'string' && id.length == 24) {
-				query = {
-					_id: {
-						id: Buffer.from(id, "hex"),
-						_bsontype: "ObjectID",
-					}
-				}
+				query = genBsonId(id)
 				// query._id[Symbol.for('@@mdb.bson.version')] = 5
 			}
 			else {
