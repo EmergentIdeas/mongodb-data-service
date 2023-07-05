@@ -84,7 +84,12 @@ class MongoDataService extends AbstractDataService {
 				}
 				let id = focus._id
 				collection.replaceOne({_id: id}, focus, options).then(result => {
-					return resolve([result.ops[0], 'update', result])
+					if(result.ops) {
+						return resolve([result.ops[0], 'update', result])
+					}
+					else {
+						return resolve([result, 'update', result])
+					}
 				}).catch(err => {
 					this.log.error({
 						error: err
@@ -94,7 +99,12 @@ class MongoDataService extends AbstractDataService {
 			}
 			else {
 				collection.insertOne(focus).then(result => {
-					return resolve([result.ops[0], 'create', result])
+					if(result.ops) {
+						return resolve([result.ops[0], 'create', result])
+					}
+					else {
+						return resolve([result, 'create', result])
+					}
 				}).catch(err => {
 					this.log.error({
 						error: err
