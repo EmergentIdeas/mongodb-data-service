@@ -136,6 +136,79 @@ class MongoDataService extends AbstractDataService {
 		return p
 	}
 
+	/**
+	 * Saves a bunch of previously unsaved objects all in one go. 
+	 * @param {MongoDB collection} collection 
+	 * @param {Array(objects)} foci 
+	 * @returns 
+	 */
+	async _doInternalMultiInsert(collection, foci) {
+		for(let focus of foci) {
+			if(this.useIndependentIds && !focus.id) {
+				focus.id = this.generateId()
+			}
+		}	
+		let p = new Promise((resolve, reject) => {
+			collection.insertMany(foci).then(result => {
+				let saved = result.ops || foci
+				for(let focus of saved) {
+	 				this._notify(focus, 'create')
+				}
+				if(result.ops) {
+					return resolve([saved, 'create', result])
+				}
+				else {
+					return resolve([saved, 'create', result])
+				}
+			}).catch(err => {
+				this.log.error({
+					error: err
+				})
+				return reject(err)
+			})
+		})
+		return p
+	}
+	
+	/**
+	 * Saves an array of objects. If the objects already have an _id attribute, it replaces the existing document, otherwise inserts it.
+	 * @param {Collection} collection A MongoDB Collection
+	 * @param {object[]} foci An array of objects to save
+	 * @param {function} callback (optional) A callback if that's how you get down. Called when Promise.all is done. This function would normally be used with promises and await.
+	 * @returns Array An array of promises which represent saves for each object in the array. If you want to wait on the results, try:
+	 * 		Promise.all(service._saveMany(col, items)).then(result => {
+	 * 			// some code
+	 * 		})
+	 * 	or
+	 * 		await Promise.all(service._saveMany(col, items))
+	 */
+	_saveMany(collection, foci, callback) {
+		let promises = []
+		
+		let multiInsertRecords = []
+		let singleInsertRecords = []
+		
+		for(let focus of foci) {
+			if(focus._id) {
+				singleInsertRecords.push(focus)
+			}
+			else {
+				multiInsertRecords.push(focus)
+			}
+		}
+		
+		if(multiInsertRecords.length > 0) {
+			promises.push(this._doInternalMultiInsert(collection, multiInsertRecords))
+		}
+		for(let focus of singleInsertRecords) {
+			promises.push(this._save(collection, focus))
+		}	
+		if(callback) {
+			addCallbackToPromise(Promise.all(promises), callback)
+		}	
+		return promises
+	}
+
 }
 
 module.exports = MongoDataService
