@@ -35,7 +35,7 @@ describe("basic data operations", async function () {
 		return p
 	})
 	it("independent ids", function () {
-		serv = new DataService({
+		let serv = new DataService({
 			collections: {
 				default: col
 			}
@@ -67,14 +67,14 @@ describe("basic data operations", async function () {
 				})
 				
 				events.on('object-change', (one, two) => {
-					console.log(`object change: ${JSON.stringify(one)} ${two}`)
+					// console.log(`object change: ${JSON.stringify(one)} ${two}`)
 				})
 
 				let dat = {
 					msg: 'hello'
 				}
 				let [r] = await serv.save(Object.assign({}, dat))
-				console.log(r)
+				// console.log(r)
 				assert.isNotNull(r._id)
 				// Make sure we have an independent id
 				assert.isNotNull(r.id)
@@ -91,7 +91,7 @@ describe("basic data operations", async function () {
 				assert.equal(result.msg, 'hello')
 				
 				result.msg = 'hi'
-				await serv.save(result)
+				let o = await serv.save(result)
 				
 				result = await serv.fetchOne(id.toString())
 				assert.equal(result.msg, 'hi')
@@ -112,7 +112,7 @@ describe("basic data operations", async function () {
 					{msg: 'hello'}
 					, {msg: 'world'}
 				])
-				await Promise.all(promises)
+				o = await Promise.all(promises)
 
 				result = await serv.fetch()
 				assert.equal(result.length, 2)

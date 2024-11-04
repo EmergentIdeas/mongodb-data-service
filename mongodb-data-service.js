@@ -140,34 +140,48 @@ class MongoDataService extends AbstractDataService {
 	 * Saves a bunch of previously unsaved objects all in one go. 
 	 * @param {MongoDB collection} collection 
 	 * @param {Array(objects)} foci 
-	 * @returns 
+	 * @returns An array of promises, one for each object
 	 */
-	async _doInternalMultiInsert(collection, foci) {
-		for(let focus of foci) {
+	_doInternalMultiInsert(collection, foci) {
+		// for(let focus of foci) {
+		// 	if(this.useIndependentIds && !focus.id) {
+		// 		focus.id = this.generateId()
+		// 	}
+		// }	
+		let promises = []
+		let resolves = []
+		let rejects = []
+
+		for(let i = 0; i < foci.length; i++) {
+			let focus = foci[i]
 			if(this.useIndependentIds && !focus.id) {
 				focus.id = this.generateId()
 			}
-		}	
-		let p = new Promise((resolve, reject) => {
-			collection.insertMany(foci).then(result => {
-				let saved = result.ops || foci
-				for(let focus of saved) {
-	 				this._notify(focus, 'create')
-				}
-				if(result.ops) {
-					return resolve([saved, 'create', result])
-				}
-				else {
-					return resolve([saved, 'create', result])
-				}
-			}).catch(err => {
-				this.log.error({
-					error: err
-				})
-				return reject(err)
+			let prom = new Promise((resolve, reject) => {
+				resolves.push(resolve)
+				rejects.push(reject)
 			})
+			promises.push(prom)
+		}
+		
+		collection.insertMany(foci).then(result => {
+			let saved = result.ops || foci
+			for(let i = 0; i < saved.length; i++) {
+				let focus = saved[i]
+				this._notify(focus, 'create')
+				let resolve = resolves[i]
+				resolve([focus, 'create', result])
+
+			}
+		}).catch(err => {
+			this.log.error({
+				error: err
+			})
+			for(let reject of rejects) {
+				reject(err)
+			}
 		})
-		return p
+		return promises
 	}
 	
 	/**
@@ -198,7 +212,8 @@ class MongoDataService extends AbstractDataService {
 		}
 		
 		if(multiInsertRecords.length > 0) {
-			promises.push(this._doInternalMultiInsert(collection, multiInsertRecords))
+			let proms = this._doInternalMultiInsert(collection, multiInsertRecords)
+			promises.push(...proms)
 		}
 		for(let focus of singleInsertRecords) {
 			promises.push(this._save(collection, focus))
