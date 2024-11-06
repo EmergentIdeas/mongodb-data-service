@@ -59,6 +59,9 @@ class MongoDataService extends AbstractDataService {
 			return query
 		}
 		else {
+			if(typeof id == 'object' && id._bsontype === 'ObjectID') {
+				return {_id: id}
+			}
 			if(typeof id == 'object') {
 				return id
 			}
@@ -87,8 +90,9 @@ class MongoDataService extends AbstractDataService {
 			return query
 		}
 	}
-
+	
 	async _doInternalFetch(collection, query) {
+		query = this.createIdQuery(query)
 		return collection.find(query).toArray()
 	}
 
@@ -103,7 +107,17 @@ class MongoDataService extends AbstractDataService {
 					upsert: true,
 				}
 				let id = focus._id
-				collection.replaceOne({_id: id}, focus, options).then(result => {
+				let query = this.createIdQuery(id)
+				
+				// This amazing dance is because sometimes, if the _id has been converted to a string at some
+				// point, mongodb won't let us replace the object (because the _id is different)
+				// It will, however, let us us replace it with an object that does not have an _id
+				delete focus._id
+				collection.replaceOne(query, focus, options).then(result => {
+					// But we need to restore the _id once we're done
+					// There's got going to be a little blip here, and a potential bug, where the is no
+					// _id if anybody is using it.
+					focus._id = id
 					if(result.ops) {
 						return resolve([result.ops[0], 'update', result])
 					}

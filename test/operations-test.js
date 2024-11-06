@@ -74,7 +74,6 @@ describe("basic data operations", async function () {
 					msg: 'hello'
 				}
 				let [r] = await serv.save(Object.assign({}, dat))
-				// console.log(r)
 				assert.isNotNull(r._id)
 				// Make sure we have an independent id
 				assert.isNotNull(r.id)
