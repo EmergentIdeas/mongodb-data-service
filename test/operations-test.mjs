@@ -1,11 +1,10 @@
-require('mocha')
-var expect = require('chai').expect
-var assert = require('chai').assert
-const tu = (one, two) => one * two
-const EventEmitter = require('events')
+import EventEmitter from 'events'
+import test from "node:test"
+import assert from "node:assert"
 
-const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb")
-const DataService = require('../mongodb-data-service')
+
+import { MongoClient, ServerApiVersion, ObjectId } from "mongodb"
+import DataService from '../mongodb-data-service.js'
 
 let collectionName = 'col' + (new Date()).getTime()
 function show(dat) {
@@ -13,7 +12,7 @@ function show(dat) {
 
 }
 
-describe("basic data operations", async function () {
+await test("basic data operations", async function (t) {
 	let uri = "mongodb://localhost:27017"
 	const client = new MongoClient(uri)
 
@@ -21,7 +20,7 @@ describe("basic data operations", async function () {
 	let col
 	let serv
 
-	it("connect", async function () {
+	await t.test("connect", async function () {
 		let p = new Promise(async (resolve, reject) => {
 			await client.connect()
 			col = client.db('test').collection(collectionName)
@@ -34,7 +33,7 @@ describe("basic data operations", async function () {
 		})
 		return p
 	})
-	it("independent ids", function () {
+	await t.test("independent ids", function () {
 		let serv = new DataService({
 			collections: {
 				default: col
@@ -43,7 +42,7 @@ describe("basic data operations", async function () {
 		assert.equal(serv.useIndependentIds, true)
 		
 		let id = serv.generateId()
-		assert.isNotNull(id)
+		assert(id != null)
 
 		serv = new DataService({
 			collections: {
@@ -55,7 +54,7 @@ describe("basic data operations", async function () {
 
 	})
 
-	it("ops", async function () {
+	await t.test("ops", async function () {
 		let p = new Promise(async (resolve, reject) => {
 			try {
 				let events = new EventEmitter()
@@ -74,9 +73,9 @@ describe("basic data operations", async function () {
 					msg: 'hello'
 				}
 				let [r] = await serv.save(Object.assign({}, dat))
-				assert.isNotNull(r._id)
+				assert(r._id != null)
 				// Make sure we have an independent id
-				assert.isNotNull(r.id)
+				assert(r.id != null)
 				let id = r._id
 				let id2 = r.id
 
@@ -104,7 +103,7 @@ describe("basic data operations", async function () {
 				result = await serv.remove(id.toString())
 
 				result = await serv.fetchOne(id.toString())
-				assert.isNull(result)
+				assert(result == null)
 				
 				
 				let promises = serv.saveMany([
@@ -123,10 +122,10 @@ describe("basic data operations", async function () {
 				assert.equal(result.length, 2)
 				
 				result = await serv.fetchOne(ids)
-				assert.isNotNull(result)
+				assert(result != null)
 
 				result = await serv.fetchOne(ids2)
-				assert.isNotNull(result)
+				assert(result != null)
 				
 				result = await serv.fetch(serv.createIdQuery(ids))
 				assert.equal(result.length, 2)
@@ -142,9 +141,9 @@ describe("basic data operations", async function () {
 				serv.useIndependentIds = false
 				let native
 				[r, native] = await serv.save({msg: 'world'})
-				assert.isNotNull(r._id)
+				assert(r._id != null)
 				// Make sure we don't have an independent id
-				assert.isUndefined(r.id)
+				assert(r.id == undefined)
 				
 
 			}
@@ -156,7 +155,7 @@ describe("basic data operations", async function () {
 		})
 		return p
 	})
-	it("cleanup", async function () {
+	await t.test("cleanup", async function () {
 		let p = new Promise(async (resolve, reject) => {
 			await col.drop()
 			await client.close()

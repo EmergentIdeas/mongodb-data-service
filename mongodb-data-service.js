@@ -59,7 +59,7 @@ class MongoDataService extends AbstractDataService {
 			return query
 		}
 		else {
-			if(typeof id == 'object' && id._bsontype === 'ObjectID') {
+			if(typeof id == 'object' && (id._bsontype === 'ObjectID' || id._bsontype === 'ObjectId')) {
 				return {_id: id}
 			}
 			if(typeof id == 'object') {

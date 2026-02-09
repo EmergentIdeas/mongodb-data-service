@@ -5,8 +5,8 @@
   "description": "",
   "main": "mongodb-data-service.js",
   "scripts": {
-    "test": "node node_modules/mocha/bin/mocha.js",
-    "testdebug": "node --inspect-brk node_modules/mocha/bin/mocha.js"
+    "test": "node test/operations-test.mjs",
+    "testdebug": "node --inspect-brk test/operations-test.mjs"
   },
   "repository": {
     "type": "git",
@@ -20,14 +20,12 @@
   },
   "homepage": "https://github.com/EmergentIdeas/mongodb-data-service#readme",
   "dependencies": {
-    "@dankolz/abstract-data-service": "^1.0.1",
+    "@dankolz/abstract-data-service": "^1.0.3",
     "add-callback-to-promise": "^1.0.2",
-    "filter-log": "^1.0.0"
+    "filter-log": "^1.0.13"
   },
   "devDependencies": {
-    "chai": "^4.3.7",
-    "mocha": "^10.2.0",
-    "mongodb": "^3.7.3"
+    "mongodb": "^7.1.0"
   },
   "files": [
     "/mongodb-data-service.js",
