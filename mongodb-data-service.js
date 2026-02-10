@@ -13,15 +13,15 @@ try {
 
 }
 catch(e) {
-	genBsonId = (val) => {
-		return {
-			_id: {
-				id: Buffer.from(val, "hex"),
-				_bsontype: "ObjectID",
-			}
-		}
+	// genBsonId = (val) => {
+	// 	return {
+	// 		_id: {
+	// 			id: Buffer.from(val, "hex"),
+	// 			_bsontype: "ObjectID",
+	// 		}
+	// 	}
 
-	}
+	// }
 
 }
 
@@ -43,6 +43,20 @@ class MongoDataService extends AbstractDataService {
 	constructor(options = {}) {
 		super(options)
 		Object.assign(this, arguments[0])
+		
+		
+		// We need to be able to construct mongo ids. However, if we've just been passed the database, we need to get access 
+		// to the CORRECT VERSION of the bson ObjectId object.
+		if(!genBsonId) {
+			let col = this.collections.default
+			if(!col) {
+				col = Object.values(this.collections)[0]
+			}
+			let gen = col.s.pkFactory.createPk().constructor
+			genBsonId = (val) => {
+				return {_id: new gen(val)}
+			}
+		}
 	}
 	
 	/**
