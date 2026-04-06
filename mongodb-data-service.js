@@ -2,29 +2,6 @@ const AbstractDataService = require('@dankolz/abstract-data-service')
 
 let genBsonId
 
-try {
-	const {ObjectId} = require('bson')
-	genBsonId = (val) => {
-		let id = new ObjectId(val)
-		return {
-			_id: id
-		}
-	}
-
-}
-catch(e) {
-	// genBsonId = (val) => {
-	// 	return {
-	// 		_id: {
-	// 			id: Buffer.from(val, "hex"),
-	// 			_bsontype: "ObjectID",
-	// 		}
-	// 	}
-
-	// }
-
-}
-
 class MongoDataService extends AbstractDataService {
 
 	/**
@@ -55,6 +32,19 @@ class MongoDataService extends AbstractDataService {
 			let gen = col.s.pkFactory.createPk().constructor
 			genBsonId = (val) => {
 				return {_id: new gen(val)}
+			}
+		}
+		if(!genBsonId) {
+			try {
+				const {ObjectId} = require('bson')
+				genBsonId = (val) => {
+					let id = new ObjectId(val)
+					return {
+						_id: id
+					}
+				}
+			}
+			catch(e) {
 			}
 		}
 	}
